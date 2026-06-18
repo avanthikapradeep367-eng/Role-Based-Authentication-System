@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RBAC Sentinel - Enterprise Access Management Control</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --surface-bg: rgba(255, 255, 255, 0.45);
+            --surface-border: rgba(226, 232, 240, 0.7);
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-glow: rgba(99, 102, 241, 0.1);
+            --secondary: #4f46e5;
+            --secondary-light: #6366f1;
+            --secondary-glow: rgba(79, 70, 229, 0.08);
+            --accent: #0ea5e9;
+            --accent-light: #38bdf8;
+            --accent-glow: rgba(14, 165, 233, 0.08);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.1);
+            --error: #ef4444;
+            --error-glow: rgba(239, 68, 68, 0.1);
+            --warning: #f59e0b;
+            --warning-glow: rgba(245, 158, 11, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at 50% 0%, #ffffff 0%, #f1f5f9 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+            padding: 40px 24px 60px;
+            animation: entryDrift 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Ambient gradient background blur circles */
+        .ambient-glow-1 {
+            position: absolute;
+            top: -10%;
+            left: -5%;
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.04) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .ambient-glow-2 {
+            position: absolute;
+            bottom: -10%;
+            right: -5%;
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, rgba(14, 165, 233, 0.04) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        @keyframes entryDrift {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            z-index: 1;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 9999px;
+            padding: 16px 36px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 10px 30px rgba(148, 163, 184, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            margin-bottom: 56px;
+            position: sticky;
+            top: 24px;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        header h1 {
+            font-size: 1.35rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            font-weight: 400;
+            max-width: 450px;
+            margin: 0;
+            line-height: 1.4;
+            text-align: right;
+        }
+
+        /* Responsive Dashboard Layout grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+
+        .dashboard-grid.logged-in {
+            grid-template-columns: 1fr;
+        }
+
+        @media (max-width: 960px) {
+
+            .dashboard-grid,
+            .dashboard-grid.logged-in {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        #auth-card {
+            transform: translateY(16px);
+        }
+
+        #dashboard-card {
+            transform: translateY(-8px);
+        }
+
+        /* Premium glassmorphic card design */
+        .card {
+            background: var(--surface-bg);
+            border: 1px solid var(--surface-border);
+            border-radius: 28px;
+            padding: 40px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 20px 40px rgba(148, 163, 184, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.4), rgba(79, 70, 229, 0.4));
+        }
+
+        .card:hover {
+            transform: translateY(-12px);
+            box-shadow: 0 32px 64px rgba(99, 102, 241, 0.08), 0 0 1px rgba(255, 255, 255, 0.8);
+        }
+
+        #auth-card:hover {
+            transform: translateY(10px);
+        }
+
+        #dashboard-card:hover {
+            transform: translateY(-14px);
+        }
+
+        .dashboard-grid.logged-in #dashboard-card {
+            transform: translateY(0);
+        }
+
+        .dashboard-grid.logged-in #dashboard-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .card-title svg {
+            color: var(--primary);
+            stroke-width: 1.5;
+        }
+
+        /* Elegant navigation tabs */
+        .tabs {
+            display: flex;
+            background: rgba(241, 245, 249, 0.8);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 9999px;
+            padding: 4px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 20px;
+            border-radius: 9999px;
+            font-weight: 500;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .tab-btn.active {
+            background: #ffffff;
+            color: var(--primary);
+            box-shadow: 0 4px 12px rgba(148, 163, 184, 0.12), 0 1px 3px rgba(148, 163, 184, 0.08);
+        }
+
+        /* Form UI elements */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper input,
+        .input-wrapper select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 9999px;
+            padding: 12px 20px;
+            color: var(--text-main);
+            font-size: 0.92rem;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .input-wrapper input::placeholder {
+            color: #94a3b8;
+        }
+
+        .input-wrapper input:focus,
+        .input-wrapper select:focus {
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 4px var(--primary-glow);
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .input-wrapper select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        .btn {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            border-radius: 9999px;
+            padding: 12px 24px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            width: 100%;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 14px var(--primary-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.06);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+            color: var(--error);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.25);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--error-glow);
+        }
+
+        /* Logged In Dashboard Inner Grid */
+        .dashboard-content {
+            display: grid;
+            grid-template-columns: 1.1fr 1.3fr;
+            gap: 36px;
+            width: 100%;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Digital ID/Badge component for Session Info */
+        .id-badge {
+            background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.3)), rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 24px;
+            padding: 28px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 10px 30px rgba(148, 163, 184, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .id-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-light), var(--accent-light));
+        }
+
+        .badge-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .badge-header .label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .badge-profile {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .badge-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent-light) 100%);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.5rem;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.2);
+        }
+
+        .badge-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .badge-username {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .badge-role {
+            align-self: flex-start;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-role.role-ADMIN {
+            background: rgba(245, 158, 11, 0.08);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .badge-role.role-MANAGER {
+            background: rgba(14, 165, 233, 0.08);
+            color: var(--accent);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+        }
+
+        .badge-role.role-USER {
+            background: rgba(16, 185, 129, 0.08);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .badge-footer {
+            border-top: 1px solid rgba(226, 232, 240, 0.8);
+            padding-top: 14px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Clearance lists styling */
+        .clearance-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .action-card {
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(226, 232, 240, 0.6);
+            border-radius: 20px;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .action-card:hover {
+            background: rgba(255, 255, 255, 0.65);
+            border-color: rgba(99, 102, 241, 0.25);
+            transform: translateX(6px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.04);
+        }
+
+        .action-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .action-name {
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-main);
+        }
+
+        .action-desc {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.78rem;
+            font-weight: 500;
+        }
+
+        .status-badge.allowed {
+            background: rgba(16, 185, 129, 0.08);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-badge.denied {
+            background: rgba(239, 68, 68, 0.08);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        /* Database Table styling */
+        .db-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .db-table-container {
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 8px rgba(148, 163, 184, 0.03);
+        }
+
+        .db-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            text-align: left;
+        }
+
+        .db-table th {
+            background: rgba(248, 250, 252, 0.6);
+            padding: 14px 20px;
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .db-table td {
+            padding: 14px 20px;
+            color: var(--text-main);
+            border-bottom: 1px solid rgba(241, 245, 249, 0.5);
+        }
+
+        .db-table tbody tr:last-child td {
+            border: none;
+        }
+
+        .db-table tbody tr {
+            transition: background-color 0.2s ease;
+        }
+
+        .db-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .trash-btn {
+            background: transparent;
+            border: none;
+            color: rgba(239, 68, 68, 0.6);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .trash-btn:hover {
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.08);
+            transform: scale(1.1);
+        }
+
+        /* Stream logs terminal */
+        .terminal-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .terminal-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+
+        .terminal-clear {
+            background: transparent;
+            border: none;
+            color: var(--primary);
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .terminal-clear:hover {
+            opacity: 0.8;
+        }
+
+        .terminal {
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 20px;
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            height: 200px;
+            overflow-y: auto;
+            color: var(--text-main);
+            box-shadow: inset 0 2px 8px rgba(148, 163, 184, 0.03);
+            scroll-behavior: smooth;
+        }
+
+        /* Custom scrollbar for database/terminal */
+        .terminal::-webkit-scrollbar,
+        .db-table-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .terminal::-webkit-scrollbar-track,
+        .db-table-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .terminal::-webkit-scrollbar-thumb,
+        .db-table-container::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 4px;
+        }
+
+        .terminal::-webkit-scrollbar-thumb:hover,
+        .db-table-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.4);
+        }
+
+        .log-line {
+            margin-bottom: 10px;
+            line-height: 1.6;
+            border-bottom: 1px dashed rgba(226, 232, 240, 0.6);
+            padding-bottom: 8px;
+        }
+
+        .log-line:last-child {
+            border: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .log-timestamp {
+            color: var(--text-muted);
+            margin-right: 8px;
+        }
+
+        .log-method {
+            font-weight: 600;
+        }
+
+        .log-method.POST {
+            color: #db2777;
+        }
+
+        .log-method.GET {
+            color: #059669;
+        }
+
+        .log-method.DELETE {
+            color: #e11d48;
+        }
+
+        .log-details {
+            color: var(--text-muted);
+        }
+
+        .log-status {
+            color: var(--text-main);
+        }
+
+        /* Guest mode info cards */
+        .info-card {
+            background: rgba(99, 102, 241, 0.04);
+            border: 1px solid rgba(99, 102, 241, 0.12);
+            border-radius: 20px;
+            padding: 24px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .info-title {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 0.92rem;
+            margin-bottom: 12px;
+            letter-spacing: 0.02em;
+        }
+
+        .info-list {
+            padding-left: 20px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        .info-list li strong {
+            color: var(--text-main);
+        }
+
+        /* Toast Component */
+        .toast {
+            position: fixed;
+            bottom: 36px;
+            right: 36px;
+            background: #ffffff;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-left: 4px solid var(--primary);
+            color: var(--text-main);
+            padding: 16px 28px;
+            border-radius: 20px;
+            box-shadow: 0 20px 48px rgba(148, 163, 184, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 1000;
+            transform: translateY(120px) scale(0.9);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .toast.show {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-left-color: var(--success);
+        }
+
+        .toast.error {
+            border-left-color: var(--error);
+        }
+
+        .toast.warning {
+            border-left-color: var(--warning);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ambient-glow-1"></div>
+    <div class="ambient-glow-2"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                    stroke-linecap="round" stroke-linejoin="round"
+                    style="color: var(--primary); vertical-align: middle;">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                RBAC Sentinel
+            </h1>
+            <p>Enterprise Access Management Control</p>
+        </header>
+
+        <!-- Dynamic Grid Layout -->
+        <div class="dashboard-grid" id="main-grid">
+            <!-- Left Card: Authentication Portal -->
+            <div class="card" id="auth-card">
+                <div class="tabs">
+                    <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">Sign In</button>
+                    <button class="tab-btn" id="tab-register" onclick="switchTab('register')">Sign Up</button>
+                </div>
+
+                <!-- SIGN IN FORM -->
+                <form id="login-form" onsubmit="handleLogin(event)">
+                    <div class="card-title">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        <span>Access Portal</span>
+                    </div>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label for="login-username">Username</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="login-username" required placeholder="Enter username">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="login-password" required placeholder="••••••••">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Sign In</button>
+                </form>
+
+                <!-- SIGN UP FORM -->
+                <form id="register-form" onsubmit="handleRegister(event)" style="display: none;">
+                    <div class="card-title">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <line x1="19" y1="8" x2="19" y2="14" />
+                            <line x1="22" y1="11" x2="16" y2="11" />
+                        </svg>
+                        <span>Create Identity</span>
+                    </div>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label for="register-username">Username</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="register-username" required placeholder="Choose a username">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Password</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="register-password" required placeholder="Create secure password">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-role">Assign Role clearance</label>
+                        <div class="input-wrapper">
+                            <select id="register-role" required>
+                                <option value="USER">USER (Read Access Only)</option>
+                                <option value="MANAGER">MANAGER (Read & List Access)</option>
+                                <option value="ADMIN">ADMIN (Full Security Clearance)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Create Account</button>
+                </form>
+            </div>
+
+            <!-- Right Card: System Console & Dashboard -->
+            <div class="card" id="dashboard-card">
+                <!-- Guest View (Idle State) -->
+                <div id="guest-state"
+                    style="display: flex; flex-direction: column; gap: 24px; min-height: 350px; justify-content: center; align-items: center; text-align: center;">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--primary)"
+                        stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.15;">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    <div>
+                        <h3 style="font-size: 1.3rem; margin-bottom: 8px;">Security Sandbox Locked</h3>
+                        <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 400px; margin: 0 auto;">Sign
+                            in or create an identity card to activate clearance verification levels.</p>
+                    </div>
+
+                    <div class="info-card">
+                        <div class="info-title">System Role Permissions</div>
+                        <ul class="info-list">
+                            <li><strong style="color: var(--warning);">ADMIN</strong>: Complete view / write / delete
+                                system clearance.</li>
+                            <li><strong style="color: var(--accent);">MANAGER</strong>: Read and list database profiles.
+                                No purge actions.</li>
+                            <li><strong style="color: var(--success);">USER</strong>: Basic local system profile read
+                                access.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Active Logged In Dashboard View -->
+                <div id="active-state" class="dashboard-content" style="display: none;">
+
+                    <!-- Left Panel: Profile ID & Clearance List -->
+                    <div class="clearance-panel">
+                        <!-- Digital Badge / ID Card -->
+                        <div class="id-badge">
+                            <div class="badge-header">
+                                <span class="label">Identity Card</span>
+                                <span style="font-size: 0.7rem; color: var(--success); font-weight: 700;">● SYSTEM
+                                    RUNNING</span>
+                            </div>
+                            <div class="badge-profile">
+                                <div class="badge-avatar" id="user-avatar">A</div>
+                                <div class="badge-details">
+                                    <span class="badge-username" id="session-username">username</span>
+                                    <span class="badge-role" id="session-role">ROLE</span>
+                                </div>
+                            </div>
+                            <div class="badge-footer">
+                                <span>Host: localhost:8080</span>
+                                <span>DB: H2 Memory</span>
+                            </div>
+                        </div>
+
+                        <!-- Access Clearances -->
+                        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                            <div
+                                style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                </svg>
+                                <span>Clearance Validations</span>
+                            </div>
+
+                            <div class="action-card">
+                                <div class="action-meta">
+                                    <span class="action-name">GET /api/auth/profile</span>
+                                    <span class="action-desc">Read basic profile profile specs</span>
+                                </div>
+                                <span class="status-badge allowed">Allowed</span>
+                            </div>
+
+                            <div class="action-card">
+                                <div class="action-meta">
+                                    <span class="action-name">GET /api/auth/users</span>
+                                    <span class="action-desc">View database list (ADMIN/MANAGER required)</span>
+                                </div>
+                                <span class="status-badge" id="clearance-users-badge">Checking...</span>
+                            </div>
+
+                            <div class="action-card">
+                                <div class="action-meta">
+                                    <span class="action-name">DELETE /api/auth/users/{id}</span>
+                                    <span class="action-desc">Purge records from db (ADMIN required)</span>
+                                </div>
+                                <span class="status-badge" id="clearance-delete-badge">Checking...</span>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-danger" onclick="handleLogout()" style="margin-top: 10px;">Logout
+                            Session</button>
+                    </div>
+
+                    <!-- Right Panel: Database List & Logs Terminal -->
+                    <div class="db-panel">
+                        <!-- Live Database simulator view -->
+                        <div id="live-db-viewer"
+                            style="display: none; display: flex; flex-direction: column; gap: 12px;">
+                            <div
+                                style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <ellipse cx="12" cy="5" rx="9" ry="3" />
+                                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                                    <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
+                                </svg>
+                                <span>Live Database Sim</span>
+                            </div>
+                            <div class="db-table-container">
+                                <table class="db-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Username</th>
+                                            <th>Role</th>
+                                            <th id="table-th-actions" style="text-align: right;">Purge</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="db-table-body">
+                                        <!-- Loaded via API call -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Logs terminal -->
+                        <div class="terminal-panel">
+                            <div class="terminal-header">
+                                <span class="terminal-title">API Console Stream</span>
+                                <button class="terminal-clear" onclick="clearConsole()">Clear Logs</button>
+                            </div>
+                            <div class="terminal" id="terminal-logs">
+                                <div class="log-line">
+                                    <span class="log-timestamp">[16:00:00]</span>
+                                    <span class="log-details">System listening on port 8080. Sandbox initialized.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Component -->
+    <div id="toast" class="toast">
+        <span id="toast-message">Notification here</span>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        function switchTab(tab) {
+            const tabLogin = document.getElementById('tab-login');
+            const tabRegister = document.getElementById('tab-register');
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+
+            if (tab === 'login') {
+                tabLogin.classList.add('active');
+                tabRegister.classList.remove('active');
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+            } else {
+                tabLogin.classList.remove('active');
+                tabRegister.classList.add('active');
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+
+            toast.className = `toast ${type}`;
+            toastMsg.innerText = message;
+
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function addTerminalLog(method, url, requestBody, responseStatus, responseBody) {
+            const terminalLogs = document.getElementById('terminal-logs');
+            const entry = document.createElement('div');
+            entry.className = 'log-line';
+
+            const time = new Date().toLocaleTimeString();
+            entry.innerHTML = `
+                <span class="log-timestamp">[${time}]</span>
+                <span class="log-method ${method}">${method}</span> <span style="color: #f8fafc; font-weight: 500;">${url}</span>
+                ${requestBody ? `<br><span class="log-details">&nbsp;&nbsp;Payload: ${JSON.stringify(requestBody)}</span>` : ''}
+                <br><span class="log-status">&nbsp;&nbsp;Status ${responseStatus} ← ${JSON.stringify(responseBody)}</span>
+            `;
+
+            terminalLogs.appendChild(entry);
+            terminalLogs.scrollTop = terminalLogs.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('terminal-logs').innerHTML = `
+                <div class="log-line">
+                    <span class="log-timestamp">[${new Date().toLocaleTimeString()}]</span>
+                    <span class="log-details">Terminal logs cleared. Simulator active.</span>
+                </div>
+            `;
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const usernameInput = document.getElementById('register-username');
+            const passwordInput = document.getElementById('register-password');
+            const roleInput = document.getElementById('register-role');
+
+            const body = {
+                username: usernameInput.value,
+                password: passwordInput.value,
+                role: roleInput.value
+            };
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+                addTerminalLog('POST', '/api/auth/register', { username: body.username, password: '•••', role: body.role }, response.status, data);
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                } else {
+                    showToast('Identity registered successfully! Sign in below.');
+                    usernameInput.value = '';
+                    passwordInput.value = '';
+                    switchTab('login');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to connect to backend server', 'error');
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const usernameInput = document.getElementById('login-username');
+            const passwordInput = document.getElementById('login-password');
+
+            const body = {
+                username: usernameInput.value,
+                password: passwordInput.value
+            };
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+                addTerminalLog('POST', '/api/auth/login', { username: body.username, password: '•••' }, response.status, data);
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                } else {
+                    currentUser = {
+                        username: data.username,
+                        role: data.role
+                    };
+                    showToast(`Successfully authenticated: Welcome back, ${data.username}!`);
+                    renderDashboard();
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to connect to backend server', 'error');
+            }
+        }
+
+        async function fetchDatabaseUsers() {
+            if (!currentUser) return;
+
+            try {
+                const response = await fetch(`/api/auth/users?role=${currentUser.role}`);
+                const data = await response.json();
+
+                addTerminalLog('GET', `/api/auth/users?role=${currentUser.role}`, null, response.status, data.error ? data : `[Received ${data.length} users]`);
+
+                if (data.error) {
+                    document.getElementById('live-db-viewer').style.display = 'none';
+                } else {
+                    document.getElementById('live-db-viewer').style.display = 'flex';
+                    const tbody = document.getElementById('db-table-body');
+                    tbody.innerHTML = '';
+
+                    data.forEach(user => {
+                        const tr = document.createElement('tr');
+
+                        const tdId = document.createElement('td');
+                        tdId.innerText = user.id;
+                        tr.appendChild(tdId);
+
+                        const tdUser = document.createElement('td');
+                        tdUser.style.fontWeight = '700';
+                        tdUser.innerText = user.username;
+                        tr.appendChild(tdUser);
+
+                        const tdRole = document.createElement('td');
+                        tdRole.innerHTML = `<span class="badge-role role-${user.role}">${user.role}</span>`;
+                        tr.appendChild(tdRole);
+
+                        const tdActions = document.createElement('td');
+                        tdActions.style.textAlign = 'right';
+
+                        if (currentUser.role === 'ADMIN') {
+                            const deleteBtn = document.createElement('button');
+                            deleteBtn.className = 'trash-btn';
+                            deleteBtn.title = `Purge ${user.username}`;
+                            deleteBtn.innerHTML = `
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                            `;
+                            deleteBtn.onclick = () => deleteUserIdentity(user.id, user.username);
+                            tdActions.appendChild(deleteBtn);
+                        } else {
+                            tdActions.innerHTML = `<span style="color: var(--text-muted); font-size: 0.8rem;">🔒 Locked</span>`;
+                        }
+
+                        tr.appendChild(tdActions);
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteUserIdentity(id, name) {
+            if (!currentUser) return;
+            if (!confirm(`Are you sure you want to permanently delete user "${name}"?`)) return;
+
+            try {
+                const response = await fetch(`/api/auth/users/${id}?role=${currentUser.role}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+
+                addTerminalLog('DELETE', `/api/auth/users/${id}?role=${currentUser.role}`, null, response.status, data);
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                } else {
+                    showToast(`Successfully purged user "${name}"`, 'success');
+                    fetchDatabaseUsers();
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to connect to delete user', 'error');
+            }
+        }
+
+        function renderDashboard() {
+            // Re-structure layout for double column dashboard
+            document.getElementById('guest-state').style.display = 'none';
+            document.getElementById('auth-card').style.display = 'none';
+
+            const grid = document.getElementById('main-grid');
+            grid.classList.add('logged-in');
+
+            const activeState = document.getElementById('active-state');
+            activeState.style.display = 'grid';
+
+            document.getElementById('session-username').innerText = currentUser.username;
+            document.getElementById('user-avatar').innerText = currentUser.username.charAt(0).toUpperCase();
+
+            const badge = document.getElementById('session-role');
+            badge.innerText = currentUser.role;
+            badge.className = `badge-role role-${currentUser.role}`;
+
+            // Clearance level indicators updates
+            const usersBadge = document.getElementById('clearance-users-badge');
+            const deleteBadge = document.getElementById('clearance-delete-badge');
+
+            if (currentUser.role === 'ADMIN') {
+                usersBadge.className = 'status-badge allowed';
+                usersBadge.innerText = 'Allowed';
+                deleteBadge.className = 'status-badge allowed';
+                deleteBadge.innerText = 'Allowed';
+                document.getElementById('table-th-actions').style.display = 'table-cell';
+            } else if (currentUser.role === 'MANAGER') {
+                usersBadge.className = 'status-badge allowed';
+                usersBadge.innerText = 'Allowed';
+                deleteBadge.className = 'status-badge denied';
+                deleteBadge.innerText = 'Denied';
+                document.getElementById('table-th-actions').style.display = 'none';
+            } else {
+                usersBadge.className = 'status-badge denied';
+                usersBadge.innerText = 'Denied';
+                deleteBadge.className = 'status-badge denied';
+                deleteBadge.innerText = 'Denied';
+                document.getElementById('table-th-actions').style.display = 'none';
+            }
+
+            // Read database users list
+            fetchDatabaseUsers();
+        }
+
+        function handleLogout() {
+            currentUser = null;
+
+            const grid = document.getElementById('main-grid');
+            grid.classList.remove('logged-in');
+
+            document.getElementById('guest-state').style.display = 'flex';
+            document.getElementById('active-state').style.display = 'none';
+            document.getElementById('auth-card').style.display = 'flex';
+
+            // Clear credentials inputs
+            document.getElementById('login-username').value = '';
+            document.getElementById('login-password').value = '';
+
+            showToast('Session terminated successfully.', 'warning');
+        }
+    </script>
+</body>
+
+</html>
